@@ -14,6 +14,7 @@
 
 #include <QPushButton>
 #include <QFontDialog>
+#include <QSpinBox>
 #include <QWidget>
 
 #include <QDebug>
@@ -40,7 +41,6 @@ Tracker::Tracker(QMainWindow* parent)
     };
 
     actions[0]->connect(actions[0], &QAction::triggered, [=]() {
-        qDebug() << "closing main window...";
         saveSettings();
         close();
     });
@@ -79,7 +79,7 @@ Tracker::~Tracker() {
 
 void Tracker::getJsonData() {
     _requestCounter = 4;
-    qDebug() << "getting JSON for lang" << _language << "and id" << _worldId;
+    //qDebug() << "getting JSON for lang" << _language << "and id" << _worldId;
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/map_names.json?lang=" + _language)));
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/world_names.json?lang=" + _language)));
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/event_names.json?lang=" + _language)));
@@ -206,7 +206,6 @@ void Tracker::addEvents() {
             label->setAutoFillBackground(true);
             label->resize(200, 25);
             label->show();
-            //label->installEventFilter(this);
             _labels[eid] = label;
             j++;
         }
@@ -263,9 +262,29 @@ void Tracker::openOptions() {
         _settings.setValue("Game/language", _language);
     });
 
+    QLabel* intervalLabel = new QLabel("Update interval (in seconds)", window);
+    intervalLabel->resize(150, 25);
+    intervalLabel->move(0, 50);
+    intervalLabel->setIndent(5);
+    intervalLabel->show();
+
+    QSpinBox* intervalPicker = new QSpinBox(window);
+    intervalPicker->setRange(10, 600); // 10 sec, 10 min
+    intervalPicker->resize(50, 25);
+    intervalPicker->move(150, 50);
+    intervalPicker->show();
+
+    // http://lists.qt-project.org/pipermail/interest/2012-September/003894.html
+    void (QSpinBox:: *signal)(int) = &QSpinBox::valueChanged;
+    intervalPicker->connect(intervalPicker, signal, [=](int i) {
+        _updateInterval = i;
+        _timer->setInterval(_updateInterval * 1000);
+        _settings.setValue("Tracker/update_interval", _updateInterval);
+    });
+
     QPushButton* button = new QPushButton("Change font", window);
     button->resize(100, 25);
-    button->move(0, 50);
+    button->move(200, 50);
     button->show();
 
     button->connect(button, &QPushButton::clicked, [=]() {
@@ -299,9 +318,10 @@ void Tracker::updateEvents() {
         int i = 0;
         for (const QString& id : list) {
             if (_events[id]->state == "Success" && size - i++ > 1) {
-                qDebug() << "\t" << _json["event_names"][id] << "is finished, going to next...";
+                qDebug() << _json["event_names"][id] << "is finished, going to next...";
                 continue;
-            }
+            } else
+                qDebug() << "showing last in chain (boss)" << _json["event_names"][id];
 
             QMap<QString, QString> colors;
             colors["Active"]      = "green";
@@ -340,7 +360,7 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             } else
                 _events[event_id] = new Event(map_id, state);
         }
-        qDebug() << _events.size() << "active events added";
+        //qDebug() << _events.size() << "active events added\n";
     // world_names, map_names, event_names
     } else {
         for (QJsonValue value : array) {
@@ -353,11 +373,10 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             else
                 _json[key][id] = name;
         }
-        qDebug() << _json[key].size() << "added for" << key;
+        //qDebug() << _json[key].size() << "added for" << key;
     }
     if (--_requestCounter == 0 && !_timer->isActive()) {
         _timer->start(_updateInterval * 1000);
-        qDebug() << "adding events...";
         addEvents();
         updateEvents();
     }

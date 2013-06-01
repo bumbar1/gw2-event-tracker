@@ -12,7 +12,7 @@ Todo list
 >
 > track entire zones?
 >
-> options: add colors pickers for event states, update interval picker
+> options: add colors pickers for event states
 >
 > customizable wishlist
 >
