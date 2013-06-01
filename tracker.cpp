@@ -1,5 +1,7 @@
 #include <QStandardPaths>
 #include <QAction>
+#include <QEvent>
+#include <QMouseEvent>
 #include <QFile>
 
 #include <QNetworkReply>
@@ -58,11 +60,11 @@ Tracker::Tracker(QMainWindow* parent)
 Tracker::~Tracker() {
     delete _timer;
 
-    if (_langComboBox)
+    /*if (_langComboBox)
         delete _langComboBox;
 
     if (_servComboBox)
-        delete _servComboBox;
+        delete _servComboBox;*/
 
     for (auto& el : _labels)
         delete el;
@@ -119,7 +121,7 @@ void Tracker::init(const QRect& desktop) {
     /**** Shatterer (Blazeridge Stepps) ****/
     _wishlist[3].append("580A44EE-BAED-429A-B8BE-907A18E36189");
     _wishlist[3].append("8E064416-64B5-4749-B9E2-31971AB41783");
-    //_wishlist[3].append("03BF176A-D59F-49CA-A311-39FC6F533F2F");
+    _wishlist[3].append("03BF176A-D59F-49CA-A311-39FC6F533F2F");
 
     /**** Tequatl () ****/
     _wishlist[4].append("568A30CF-8512-462F-9D67-647D69BEFAED");
@@ -204,6 +206,7 @@ void Tracker::addEvents() {
             label->setAutoFillBackground(true);
             label->resize(200, 25);
             label->show();
+            //label->installEventFilter(this);
             _labels[eid] = label;
             j++;
         }
@@ -218,10 +221,10 @@ void Tracker::addEvents() {
 void Tracker::openOptions() {
     QWidget* window = new QWidget(nullptr);
 
+    // http://stackoverflow.com/a/7944336
+    window->setAttribute(Qt::WA_DeleteOnClose);
     window->connect(window, &QWidget::destroyed, [=](){
-        qDebug() << "closing 2nd window...";
         setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
-        close();
         show();
     });
 
