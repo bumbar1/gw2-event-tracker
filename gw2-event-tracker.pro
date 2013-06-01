@@ -22,5 +22,5 @@ HEADERS  += \
 
 CONFIG += c++11 static
 
-QMAKE_CXXFLAGS += -std=c++11
-QMAKE_LFLAGS += -static-libgcc
+QMAKE_CXXFLAGS += -std=c++11 -static-libgcc -static-libstdc++
+QMAKE_LFLAGS += -static-libgcc -static-libstdc++

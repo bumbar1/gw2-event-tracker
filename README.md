@@ -29,11 +29,15 @@ App creates ini file in DOCUMENTS/Guild Wars 2 (folder should be created by GW2 
 	- Qt5Widgets.dll
 	- ssleay32.dll
 	- libeay32.dll
+	- libglesv2.dll
+	- libEGL.dll
+	- why won't these link statically is beyond me....
+		- libwinpthread-1.dll
+		- libstdc++-6.dll
+		- libgcc_s_seh-1.dll
 	
 Bugs
 ---------------------
 > `updateEvents` : check if key exists (to prevent crash)
->
-> when options window is closed, main window doesn't become borderless (fixed)
 >
 > (probably) tons of memory leaks
