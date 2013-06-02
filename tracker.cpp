@@ -22,6 +22,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QFont>
+#include <QColorDialog>
 
 #include <QDebug>
 
@@ -39,23 +40,28 @@ Tracker::Tracker(QMainWindow* parent)
 {
     resize(200, 25);
 
-    // http://stackoverflow.com/questions/650889/qtoolbar-is-there-a-way-to-make-toolbar-unhidable
+    // http://stackoverflow.com/a/651345
     setContextMenuPolicy(Qt::PreventContextMenu);
 
     QList<QAction*> actions {
         new QAction("Quit", _toolbar),
         new QAction("Options", _toolbar),
         new QAction("Update", _toolbar),
-        //new QAction("Clear", _toolbar),
+        new QAction("Show all", _toolbar),
     };
+
+    connect(actions[1], SIGNAL(triggered()), this, SLOT(openOptions()));
+    connect(actions[2], SIGNAL(triggered()), this, SLOT(updateEvents()));
 
     actions[0]->connect(actions[0], &QAction::triggered, [=]() {
         saveSettings();
         close();
     });
-    connect(actions[1], SIGNAL(triggered()), this, SLOT(openOptions()));
-    connect(actions[2], SIGNAL(triggered()), this, SLOT(updateEvents()));
-    //connect(actions[3], SIGNAL(triggered()), this, SLOT(clearEvents()));
+
+    actions[3]->connect(actions[3], &QAction::triggered, [=]() {
+        for (auto& e : _events)
+            e->show();
+    });
 
     _toolbar->addActions(actions);
 
@@ -88,7 +94,6 @@ Tracker::~Tracker() {
 
 void Tracker::getJsonData() {
     _requestCounter = 4;
-    //qDebug() << "getting JSON for lang" << _language << "and id" << _worldId;
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/map_names.json?lang=" + _language)));
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/world_names.json?lang=" + _language)));
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/event_names.json?lang=" + _language)));
@@ -96,6 +101,12 @@ void Tracker::getJsonData() {
 }
 
 void Tracker::init(const QRect& desktop) {
+    _eventColors["Active"]      = "#00FF00";
+    _eventColors["Success"]     = "#999999";
+    _eventColors["Fail"]        = "#FF0000";
+    _eventColors["Warmup"]      = "#FFFFFF";
+    _eventColors["Preparation"] = "#F4A460";
+
     if (!QFile::exists(_settingsPath + "/Guild Wars 2/event_tracker.ini"))
         firstTimeSetup(desktop);
     else
@@ -153,17 +164,21 @@ void Tracker::firstTimeSetup(const QRect& desktop) {
 }
 
 void Tracker::saveSettings() {
-
     _settings.beginGroup("Tracker");
-    _settings.setValue("size", size());
-    _settings.setValue("position", pos());
-    _settings.setValue("update_interval", _updateInterval);
-    _settings.setValue("font", _font.toString());
+        _settings.setValue("size", size());
+        _settings.setValue("position", pos());
+        _settings.setValue("update_interval", _updateInterval);
+        _settings.setValue("font", _font.toString());
+    _settings.endGroup();
+
+    _settings.beginGroup("Colors");
+        for (const QString& key : _eventColors.keys())
+            _settings.setValue(key, _eventColors[key]);
     _settings.endGroup();
 
     _settings.beginGroup("Game");
-    _settings.setValue("language", _language);
-    _settings.setValue("world_id", _worldId);
+        _settings.setValue("language", _language);
+        _settings.setValue("world_id", _worldId);
     _settings.endGroup();
 
     _settings.beginGroup("Events");
@@ -172,16 +187,21 @@ void Tracker::saveSettings() {
 
 void Tracker::loadSettings() {
     _settings.beginGroup("Tracker");
-    resize(_settings.value("size").toSize());
-    move(_settings.value("position").toPoint());
-    _updateInterval = _settings.value("update_interval").toInt();
-    _font.fromString(_settings.value("font").toString());
-    setFont(_font);
+        resize(_settings.value("size").toSize());
+        move(_settings.value("position").toPoint());
+        _updateInterval = _settings.value("update_interval").toInt();
+        _font.fromString(_settings.value("font").toString());
+        setFont(_font);
+    _settings.endGroup();
+
+    _settings.beginGroup("Colors");
+        for (const QString& key : _eventColors.keys())
+            _eventColors[key] = _settings.value(key).toString();
     _settings.endGroup();
 
     _settings.beginGroup("Game");
-    _language = _settings.value("language").toString();
-    _worldId = _settings.value("world_id").toString();
+        _language = _settings.value("language").toString();
+        _worldId = _settings.value("world_id").toString();
     _settings.endGroup();
 }
 
@@ -217,7 +237,8 @@ void Tracker::openOptions() {
 
     // http://stackoverflow.com/a/7944336
     window->setAttribute(Qt::WA_DeleteOnClose);
-    window->connect(window, &QWidget::destroyed, [=](){
+    window->connect(window, &QWidget::destroyed, [=]() {
+        saveSettings();
         setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
         show();
     });
@@ -247,14 +268,12 @@ void Tracker::openOptions() {
     _servComboBox->connect(_servComboBox, &QComboBox::currentTextChanged, [=](const QString& name) {
         if (!name.isEmpty() && !name.startsWith("Select"))
             _worldId = _json["world_names"][name];
-        _settings.setValue("Game/world_id", _worldId);
     });
 
     _langComboBox->connect(_langComboBox, &QComboBox::currentTextChanged, [=](const QString& lang) {
         if (!lang.startsWith("Language"))
             _language = lang.left(2).toLower();
         getJsonData();
-        _settings.setValue("Game/language", _language);
     });
 
     QLabel* intervalLabel = new QLabel("Update interval (in seconds)", window);
@@ -274,7 +293,6 @@ void Tracker::openOptions() {
     intervalPicker->connect(intervalPicker, signal, [=](int i) {
         _updateInterval = i;
         _timer->setInterval(_updateInterval * 1000);
-        _settings.setValue("Tracker/update_interval", _updateInterval);
     });
 
     QPushButton* button = new QPushButton("Change font", window);
@@ -286,11 +304,20 @@ void Tracker::openOptions() {
         bool ok;
         _font = QFontDialog::getFont(&ok, _font, this);
 
-        if (ok) {
+        if (ok)
             setFont(_font);
-            _settings.setValue("Tracker/font", _font.toString());
-        }
     });
+
+    int i = 0;
+    for (const QString& key : _eventColors.keys()) {
+        QPushButton* btn = new QPushButton("Change color for " + key, window);
+        btn->resize(200, 25);
+        btn->move(0, 100 + i++ * 25);
+        btn->show();
+        btn->connect(btn, &QPushButton::clicked, [=]() {
+            _eventColors[key] = QColorDialog::getColor(_eventColors[key], window).name();
+        });
+    }
 
     setWindowFlags(windowFlags() & ~Qt::FramelessWindowHint);
     show();
@@ -330,12 +357,11 @@ void Tracker::updateEvents() {
             colors["Preparation"] = "orange";
 
             QPalette palette;
-            palette.setColor(QPalette::Window, colors[_eventStates[id]->state]);
+            palette.setColor(QPalette::Window, _eventColors[_eventStates[id]->state]);
 
             _events[id]->setText(_json["event_names"][id]);
             _events[id]->setPalette(palette);
             _events[id]->setAutoFillBackground(true);
-            _events[id]->show();
         }
     }
 }
@@ -359,9 +385,8 @@ void Tracker::replyFinished(QNetworkReply* reply) {
                 _eventStates[event_id]->map_id = map_id;
                 _eventStates[event_id]->state = state;
             } else
-                _eventStates[event_id] = new Event(map_id, state);
+                _eventStates[event_id] = new EventState(map_id, state);
         }
-        //qDebug() << _eventStates.size() << "active events added\n";
     // world_names, map_names, event_names
     } else {
         for (QJsonValue value : array) {
@@ -374,7 +399,6 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             else
                 _json[key][id] = name;
         }
-        //qDebug() << _json[key].size() << "added for" << key;
     }
     if (--_requestCounter == 0 && !_timer->isActive()) {
         _timer->start(_updateInterval * 1000);

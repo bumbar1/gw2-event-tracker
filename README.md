@@ -9,7 +9,6 @@ Todo list
 ---------------------
 - remove events from list; stop tracking (can be hidden, but are still tracked)
 - track entire zones?
-- options: add colors pickers for event states
 - customizable wishlist
 - Mac build
 

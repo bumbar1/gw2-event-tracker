@@ -46,11 +46,10 @@ private:
     QMap<QString, QMap<QString, QString>> _json;
 
     // [id] = state, map_id
-    QMap<QString, Event*>  _eventStates;
+    QMap<QString, EventState*>            _eventStates;
+    QMap<QString, ClickableLabel*>        _events;
+    QList<QList<QString>>                 _wishlist;
 
-    QMap<QString, ClickableLabel*> _events;
-
-    QList<QList<QString>>  _wishlist;
     QString                _baseUrl = "https://api.guildwars2.com";
     QString                _worldId;
     QString                _language; // en, de, fr, es
@@ -62,6 +61,7 @@ private:
     QComboBox*             _langComboBox;
     QTimer*                _timer;
     QFont                  _font;
+    QMap<QString, QString> _eventColors;
 };
 
 #endif // TRACKER_HPP

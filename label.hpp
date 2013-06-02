@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QMouseEvent>
 
+// http://qt-project.org/wiki/Make-a-QLabel-Clickable
 class ClickableLabel : public QLabel {
     Q_OBJECT
 public:

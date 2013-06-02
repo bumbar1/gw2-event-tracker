@@ -3,11 +3,11 @@
 
 #include <QString>
 
-struct Event {
+struct EventState {
     QString map_id;
     QString state;
 
-    inline Event(QString map_id, QString state)
+    inline EventState(const QString& map_id, const QString& state)
         : map_id(map_id), state(state)
     {
     }
