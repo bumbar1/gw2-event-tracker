@@ -2,8 +2,10 @@
 #include <QAction>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QTimer>
 #include <QFile>
 
+#include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QUrl>
@@ -16,6 +18,10 @@
 #include <QFontDialog>
 #include <QSpinBox>
 #include <QWidget>
+#include <QToolBar>
+#include <QComboBox>
+#include <QLabel>
+#include <QFont>
 
 #include <QDebug>
 
@@ -32,6 +38,9 @@ Tracker::Tracker(QMainWindow* parent)
     , _timer(new QTimer(this))
 {
     resize(200, 25);
+
+    // http://stackoverflow.com/questions/650889/qtoolbar-is-there-a-way-to-make-toolbar-unhidable
+    setContextMenuPolicy(Qt::PreventContextMenu);
 
     QList<QAction*> actions {
         new QAction("Quit", _toolbar),
@@ -66,13 +75,13 @@ Tracker::~Tracker() {
     if (_servComboBox)
         delete _servComboBox;*/
 
-    for (auto& el : _labels)
-        delete el;
-    _labels.clear();
-
     for (auto& el : _events)
         delete el;
     _events.clear();
+
+    for (auto& el : _eventStates)
+        delete el;
+    _eventStates.clear();
 
     delete _manager;
 }
@@ -177,41 +186,27 @@ void Tracker::loadSettings() {
 }
 
 void Tracker::addEvents() {
-    int i = 0;
     for (auto& list : _wishlist) {
         int size = list.size();
-        int j = 0;
-        int n = 0;
         for (const QString& eid : list) {
-            /*qDebug() << "checking state for " << eid;
-            if (!_events.contains(eid)) {
-                qDebug() << "dont have key" << eid;
-            }
-            qDebug() << "have key" << eid;*/
-            if (_events[eid]->state == "Success" && size - n++ > 1)
+            if (_eventStates[eid]->state == "Success" && size-- > 1)
                 continue;
-            /*if (_events[eid]->state == "Success" && size - n++ == 1)
-                qDebug() << "Showing last event in chain" << _json["event_names"][eid];*/
-            QString dbg = QString::number(i) + "/" + QString::number(j) + ", ";
-            qDebug() << dbg + _json["event_names"][eid];
-            auto label = new QLabel(dbg + _json["event_names"][eid], this);
 
-            if (_labels.size())
-                label->move(0, 25 + _labels.size() * 25);
-            else
-                // first label, label list is empty so can't call .last()
-                label->move(0, 25);
-
+            auto label = new ClickableLabel(_json["event_names"][eid], this);
+            label->move(0, 25 + _events.size() * 25);
             label->setIndent(5);
-            label->setAutoFillBackground(true);
             label->resize(200, 25);
             label->show();
-            _labels[eid] = label;
-            j++;
+            label->connect(label, &ClickableLabel::clicked, [=]() {
+                label->setVisible(false);
+                resize(200, 25 + _events.size() * 25);
+                // TODO: move events up after resizing
+            });
+
+            _events[eid] = label;
         }
-        i++;
     }
-    resize(200, 25 + _labels.size() * 25);
+    resize(200, 25 + _events.size() * 25);
 }
 
 /**************************************
@@ -315,9 +310,13 @@ void Tracker::updateEvents() {
      */
     for (auto& list : _wishlist) {
         int size = list.size();
-        int i = 0;
         for (const QString& id : list) {
-            if (_events[id]->state == "Success" && size - i++ > 1) {
+            /*
+            if (!_events[id]->isVisible())
+                continue;
+            */
+
+            if (_eventStates[id]->state == "Success" && size-- > 1) {
                 qDebug() << _json["event_names"][id] << "is finished, going to next...";
                 continue;
             } else
@@ -331,10 +330,12 @@ void Tracker::updateEvents() {
             colors["Preparation"] = "orange";
 
             QPalette palette;
-            palette.setColor(QPalette::Window, colors[_events[id]->state]);
+            palette.setColor(QPalette::Window, colors[_eventStates[id]->state]);
 
-            _labels[id]->setText(_json["event_names"][id]);
-            _labels[id]->setPalette(palette);
+            _events[id]->setText(_json["event_names"][id]);
+            _events[id]->setPalette(palette);
+            _events[id]->setAutoFillBackground(true);
+            _events[id]->show();
         }
     }
 }
@@ -354,13 +355,13 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             QString state = object["state"].toString();
 
             // update if we already have event state
-            if (_events.contains(event_id)) {
-                _events[event_id]->map_id = map_id;
-                _events[event_id]->state = state;
+            if (_eventStates.contains(event_id)) {
+                _eventStates[event_id]->map_id = map_id;
+                _eventStates[event_id]->state = state;
             } else
-                _events[event_id] = new Event(map_id, state);
+                _eventStates[event_id] = new Event(map_id, state);
         }
-        //qDebug() << _events.size() << "active events added\n";
+        //qDebug() << _eventStates.size() << "active events added\n";
     // world_names, map_names, event_names
     } else {
         for (QJsonValue value : array) {

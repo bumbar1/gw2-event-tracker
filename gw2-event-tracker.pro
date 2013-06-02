@@ -18,7 +18,8 @@ SOURCES += \
 
 HEADERS  += \
     tracker.hpp \
-    event.hpp
+    event.hpp \
+    label.hpp
 
 CONFIG += c++11 static
 

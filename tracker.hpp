@@ -2,19 +2,22 @@
 #define TRACKER_HPP
 
 #include <QMainWindow>
-#include <QLabel>
-#include <QToolBar>
-#include <QComboBox>
-#include <QFont>
-
 #include <QSettings>
-#include <QNetworkAccessManager>
-
-#include <QTimer>
-#include <QList>
 #include <QMap>
+#include <QList>
 
 #include "event.hpp"
+#include "label.hpp"
+
+class QMainWindow;
+class QRect;
+class QNetworkReply;
+class QNetworkAccessManager;
+class QToolBar;
+class QSettings;
+class QComboBox;
+class QTimer;
+class QFont;
 
 class Tracker : public QMainWindow {
     Q_OBJECT
@@ -43,9 +46,10 @@ private:
     QMap<QString, QMap<QString, QString>> _json;
 
     // [id] = state, map_id
-    QMap<QString, Event*>  _events;
+    QMap<QString, Event*>  _eventStates;
 
-    QMap<QString, QLabel*> _labels;
+    QMap<QString, ClickableLabel*> _events;
+
     QList<QList<QString>>  _wishlist;
     QString                _baseUrl = "https://api.guildwars2.com";
     QString                _worldId;
