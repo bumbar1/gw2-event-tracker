@@ -68,6 +68,8 @@ Tracker::Tracker(QMainWindow* parent)
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
 
+    setWindowIcon(QIcon("icon.png"));
+
     connect(_manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
     connect(_timer, SIGNAL(timeout()), this, SLOT(updateEvents()));
 }
@@ -242,6 +244,7 @@ void Tracker::openOptions() {
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->connect(window, &QWidget::destroyed, [=]() {
         saveSettings();
+        setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
         setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
         show();
     });
@@ -322,6 +325,8 @@ void Tracker::openOptions() {
         });
     }
 
+    // disable top most window property so options window can get focus
+    setWindowFlags(windowFlags() & ~Qt::WindowStaysOnTopHint);
     setWindowFlags(windowFlags() & ~Qt::FramelessWindowHint);
     show();
 }
