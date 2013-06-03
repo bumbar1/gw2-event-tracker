@@ -75,6 +75,8 @@ Tracker::Tracker(QMainWindow* parent)
 Tracker::~Tracker() {
     delete _timer;
 
+    // comboboxes parent window has set WA_DeleteOnClose attribute,
+    // should handle deleting for us
     /*if (_langComboBox)
         delete _langComboBox;
 
@@ -217,13 +219,14 @@ void Tracker::addEvents() {
             label->setIndent(5);
             label->resize(200, 25);
             label->show();
-            label->connect(label, &ClickableLabel::clicked, [=]() {
+            label->connect(label, &ClickableLabel::rightClicked, [=]() {
                 label->setVisible(false);
                 resize(200, 25 + _events.size() * 25);
                 // TODO: move events up after resizing
             });
 
             _events[eid] = label;
+            break;
         }
     }
     resize(200, 25 + _events.size() * 25);
@@ -335,26 +338,20 @@ void Tracker::updateEvents() {
      * (such as an NPC dialogue) have not completed yet. After the activites have been completed,
      * the event will become Active.
      */
+    int i = 1;
     for (auto& list : _wishlist) {
         int size = list.size();
+        int j = 1;
         for (const QString& id : list) {
-            /*
-            if (!_events[id]->isVisible())
-                continue;
-            */
+            //if (!_events[id]->isVisible())
+            //    continue;
 
             if (_eventStates[id]->state == "Success" && size-- > 1) {
-                qDebug() << _json["event_names"][id] << "is finished, going to next...";
+                qDebug() << i << "/" << j++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
                 continue;
-            } else
-                qDebug() << "showing last in chain (boss)" << _json["event_names"][id];
-
-            QMap<QString, QString> colors;
-            colors["Active"]      = "green";
-            colors["Success"]     = "grey";
-            colors["Fail"]        = "red";
-            colors["Warmup"]      = "white";
-            colors["Preparation"] = "orange";
+            } else {
+                qDebug() << i << "/" << j++ << _eventStates[id]->state << _json["event_names"][id];
+            }
 
             QPalette palette;
             palette.setColor(QPalette::Window, _eventColors[_eventStates[id]->state]);
@@ -362,7 +359,10 @@ void Tracker::updateEvents() {
             _events[id]->setText(_json["event_names"][id]);
             _events[id]->setPalette(palette);
             _events[id]->setAutoFillBackground(true);
+
+            break;
         }
+        i++;
     }
 }
 

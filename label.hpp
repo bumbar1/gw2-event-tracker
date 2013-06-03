@@ -15,10 +15,13 @@ public:
 
 signals:
     void clicked();
+    void rightClicked();
 
 protected:
     void mousePressEvent(QMouseEvent* event) {
         if (event->button() == Qt::MouseButton::RightButton)
+            emit rightClicked();
+        else if (event->button() == Qt::MouseButton::LeftButton)
             emit clicked();
     }
 };
