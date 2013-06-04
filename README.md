@@ -32,6 +32,4 @@ App creates ini file in DOCUMENTS/Guild Wars 2 (folder should be created by GW2 
 
 Bugs
 ---------------------
-> `updateEvents` : check if key exists (to prevent crash)
->
 > (probably) tons of memory leaks

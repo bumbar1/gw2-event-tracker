@@ -11,6 +11,11 @@ struct EventState {
         : map_id(map_id), state(state)
     {
     }
+
+    inline EventState(const EventState& other)
+        : map_id(other.map_id), state(other.state)
+    {
+    }
 };
 
 #endif // EVENT_HPP

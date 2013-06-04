@@ -47,7 +47,7 @@ private:
 
     // [id] = state, map_id
     QMap<QString, EventState*>            _eventStates;
-    QMap<QString, ClickableLabel*>        _events;
+    QList<ClickableLabel*>                _events;
     QList<QList<QString>>                 _wishlist;
 
     QString                _baseUrl = "https://api.guildwars2.com";

@@ -68,7 +68,7 @@ Tracker::Tracker(QMainWindow* parent)
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
 
-    setWindowIcon(QIcon("icon.png"));
+    setWindowIcon(QIcon(":/icon.png"));
 
     connect(_manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
     connect(_timer, SIGNAL(timeout()), this, SLOT(updateEvents()));
@@ -213,21 +213,29 @@ void Tracker::addEvents() {
     for (auto& list : _wishlist) {
         int size = list.size();
         for (const QString& eid : list) {
-            if (_eventStates[eid]->state == "Success" && size-- > 1)
-                continue;
 
-            auto label = new ClickableLabel(_json["event_names"][eid], this);
+            ClickableLabel* label = nullptr;
+
+            if (_json["event_names"].contains(eid) && _eventStates.contains(eid)) {
+                if (_eventStates[eid]->state == "Success" && size-- > 1)
+                    continue;
+                label = new ClickableLabel(_json["event_names"][eid], this);
+            } else {
+                label = new ClickableLabel("No info for " + eid, this);
+            }
+
             label->move(0, 25 + _events.size() * 25);
             label->setIndent(5);
             label->resize(200, 25);
             label->show();
             label->connect(label, &ClickableLabel::rightClicked, [=]() {
                 label->setVisible(false);
-                resize(200, 25 + _events.size() * 25);
+                //resize(200, 25 + _events.size() * 25);
                 // TODO: move events up after resizing
             });
 
-            _events[eid] = label;
+            _events.append(label);
+
             break;
         }
     }
@@ -344,6 +352,7 @@ void Tracker::updateEvents() {
      * the event will become Active.
      */
     int i = 1;
+    int index = 0;
     for (auto& list : _wishlist) {
         int size = list.size();
         int j = 1;
@@ -351,6 +360,10 @@ void Tracker::updateEvents() {
             //if (!_events[id]->isVisible())
             //    continue;
 
+            if (!_eventStates.contains(id)) {
+                qDebug() << "update :: can't find key" << id;
+                continue;
+            }
             if (_eventStates[id]->state == "Success" && size-- > 1) {
                 qDebug() << i << "/" << j++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
                 continue;
@@ -361,13 +374,14 @@ void Tracker::updateEvents() {
             QPalette palette;
             palette.setColor(QPalette::Window, _eventColors[_eventStates[id]->state]);
 
-            _events[id]->setText(_json["event_names"][id]);
-            _events[id]->setPalette(palette);
-            _events[id]->setAutoFillBackground(true);
+            _events[index]->setText(_json["event_names"][id]);
+            _events[index]->setPalette(palette);
+            _events[index]->setAutoFillBackground(true);
 
             break;
         }
         i++;
+        ++index;
     }
 }
 
@@ -392,6 +406,7 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             } else
                 _eventStates[event_id] = new EventState(map_id, state);
         }
+        qDebug() << key << _eventStates.size();
     // world_names, map_names, event_names
     } else {
         for (QJsonValue value : array) {
@@ -404,7 +419,9 @@ void Tracker::replyFinished(QNetworkReply* reply) {
             else
                 _json[key][id] = name;
         }
+        qDebug() << key << _json[key].size();
     }
+
     if (--_requestCounter == 0 && !_timer->isActive()) {
         _timer->start(_updateInterval * 1000);
         addEvents();
