@@ -4,6 +4,8 @@
 #include <QMouseEvent>
 #include <QTimer>
 #include <QFile>
+#include <QTime>
+#include <QDate>
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -34,8 +36,6 @@ Tracker::Tracker(QMainWindow* parent)
     , _toolbar(addToolBar("Toolbar"))
     , _settingsPath(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
     , _settings(_settingsPath + "/Guild Wars 2/event_tracker.ini", QSettings::IniFormat)
-    , _servComboBox(nullptr)
-    , _langComboBox(nullptr)
     , _timer(new QTimer(this))
 {
     resize(200, 25);
@@ -59,8 +59,8 @@ Tracker::Tracker(QMainWindow* parent)
     });
 
     actions[3]->connect(actions[3], &QAction::triggered, [=]() {
-        for (auto& e : _events)
-            e->show();
+        qDebug() << "Showing all events, size" << _wishlist.size();
+        startTrackingEvents();
     });
 
     _toolbar->addActions(actions);
@@ -119,9 +119,131 @@ void Tracker::init(const QRect& desktop) {
     getJsonData();
 
     saveSettings();
+}
 
-    for (unsigned i = 0; i < 7; ++i)
-        _wishlist.append(QList<QString>());
+void Tracker::firstTimeSetup(const QRect& desktop) {
+    move(desktop.width() - width(), desktop.height() - height() - 600);
+
+    reloadEvents();
+
+    openOptions();
+}
+
+void Tracker::saveSettings() {
+    _settings.beginGroup("Tracker");
+        _settings.setValue("size", size());
+        _settings.setValue("position", pos());
+        _settings.setValue("update_interval", _updateInterval);
+        _settings.setValue("font", _font.toString());
+        _settings.setValue("update_date", QDate::currentDate());
+    _settings.endGroup();
+
+    _settings.beginGroup("Colors");
+        for (const QString& key : _eventColors.keys())
+            _settings.setValue(key, _eventColors[key]);
+    _settings.endGroup();
+
+    _settings.beginGroup("Game");
+        _settings.setValue("language", _language);
+        _settings.setValue("world_id", _worldId);
+    _settings.endGroup();
+
+    _settings.beginGroup("Events");
+        int i = 0;
+        for (const auto& list : _wishlist) {
+            _settings.setValue("state" + QString::number(i), list.tracked);
+            _settings.setValue("chain" + QString::number(i++), list);
+        }
+        _settings.setValue("size", i);
+    _settings.endGroup();
+}
+
+void Tracker::loadSettings() {
+    _settings.beginGroup("Tracker");
+        resize(_settings.value("size").toSize());
+        move(_settings.value("position").toPoint());
+        _updateInterval = _settings.value("update_interval").toInt();
+        _font.fromString(_settings.value("font").toString());
+        setFont(_font);
+
+        qDebug() << "last update date" << _settings.value("update_date").toDate();
+
+    _settings.endGroup();
+
+    _settings.beginGroup("Colors");
+        for (const QString& key : _eventColors.keys())
+            _eventColors[key] = _settings.value(key).toString();
+    _settings.endGroup();
+
+    _settings.beginGroup("Game");
+        _language = _settings.value("language").toString();
+        _worldId = _settings.value("world_id").toString();
+    _settings.endGroup();
+
+    _settings.beginGroup("Events");
+        int size = _settings.value("size").toInt();
+
+        qDebug() << "loading" << size << "event chains...";
+
+        for (int i = 0; i < size; ++i) {
+            _wishlist.append(EventChain());
+            _wishlist.last().tracked = _settings.value("state" + QString::number(i)).toBool();
+            _wishlist.last().append(_settings.value("chain" + QString::number(i)).toStringList());
+        }
+    _settings.endGroup();
+
+    qDebug() << "settings loaded, wishlist size" << _wishlist.size();
+}
+
+void Tracker::addEvents() {
+    int index = 0;
+    for (const auto& list : _wishlist) {
+        //if (!list.tracked)
+        //    continue;
+
+        int size = list.size();
+        for (const QString& eid : list) {
+
+            ClickableLabel* label = nullptr;
+
+            if (_json["event_names"].contains(eid) && _eventStates.contains(eid)) {
+                if (_eventStates[eid]->state == "Success" && size-- > 1)
+                    continue;
+                label = new ClickableLabel(_json["event_names"][eid], this);
+            } else {
+                label = new ClickableLabel("No info for " + eid, this);
+            }
+
+            // when resotring state (reopening app) check if chain is tracked
+            if (!list.tracked)
+                label->setStyleSheet("background-color: #000000");
+
+            label->move(0, 25 + _events.size() * 25);
+            label->setIndent(5);
+            label->resize(200, 25);
+            label->setAutoFillBackground(true);
+            label->show();
+            label->connect(label, &ClickableLabel::rightClicked, [=]() {
+                label->setStyleSheet("background-color: #000000");
+                _wishlist[index].tracked = false;
+
+                qDebug() << "stopped tracking chain" << index;
+            });
+
+            _events.append(label);
+
+            break;
+        }
+        ++index;
+    }
+    resize(200, 25 + _events.size() * 25);
+}
+
+void Tracker::reloadEvents() {
+    for (unsigned i = 0; i < 7; ++i) {
+        _wishlist.append(EventChain());
+        _wishlist.last().tracked = true;
+    }
 
     /**** BEHEMOTH (Queensdale) ****/
     _wishlist[0].append("CFBC4A8C-2917-478A-9063-1A8B43CC8C38");
@@ -160,86 +282,20 @@ void Tracker::init(const QRect& desktop) {
     _wishlist[6].append("0464CB9E-1848-4AAA-BA31-4779A959DD71");
 }
 
-void Tracker::firstTimeSetup(const QRect& desktop) {
-    _language = "en";
-    _worldId = "2003";
+void Tracker::startTrackingEvents() {
+    for (auto& list : _wishlist)
+        list.tracked = true;
 
-    move(desktop.width() - width(), desktop.height() - height() - 600);
-}
+    _wishlist.clear();
 
-void Tracker::saveSettings() {
-    _settings.beginGroup("Tracker");
-        _settings.setValue("size", size());
-        _settings.setValue("position", pos());
-        _settings.setValue("update_interval", _updateInterval);
-        _settings.setValue("font", _font.toString());
-    _settings.endGroup();
+    reloadEvents();
 
-    _settings.beginGroup("Colors");
-        for (const QString& key : _eventColors.keys())
-            _settings.setValue(key, _eventColors[key]);
-    _settings.endGroup();
+    for (auto& el : _events)
+        delete el;
+    _events.clear();
 
-    _settings.beginGroup("Game");
-        _settings.setValue("language", _language);
-        _settings.setValue("world_id", _worldId);
-    _settings.endGroup();
-
-    _settings.beginGroup("Events");
-    _settings.endGroup();
-}
-
-void Tracker::loadSettings() {
-    _settings.beginGroup("Tracker");
-        resize(_settings.value("size").toSize());
-        move(_settings.value("position").toPoint());
-        _updateInterval = _settings.value("update_interval").toInt();
-        _font.fromString(_settings.value("font").toString());
-        setFont(_font);
-    _settings.endGroup();
-
-    _settings.beginGroup("Colors");
-        for (const QString& key : _eventColors.keys())
-            _eventColors[key] = _settings.value(key).toString();
-    _settings.endGroup();
-
-    _settings.beginGroup("Game");
-        _language = _settings.value("language").toString();
-        _worldId = _settings.value("world_id").toString();
-    _settings.endGroup();
-}
-
-void Tracker::addEvents() {
-    for (auto& list : _wishlist) {
-        int size = list.size();
-        for (const QString& eid : list) {
-
-            ClickableLabel* label = nullptr;
-
-            if (_json["event_names"].contains(eid) && _eventStates.contains(eid)) {
-                if (_eventStates[eid]->state == "Success" && size-- > 1)
-                    continue;
-                label = new ClickableLabel(_json["event_names"][eid], this);
-            } else {
-                label = new ClickableLabel("No info for " + eid, this);
-            }
-
-            label->move(0, 25 + _events.size() * 25);
-            label->setIndent(5);
-            label->resize(200, 25);
-            label->show();
-            label->connect(label, &ClickableLabel::rightClicked, [=]() {
-                label->setVisible(false);
-                //resize(200, 25 + _events.size() * 25);
-                // TODO: move events up after resizing
-            });
-
-            _events.append(label);
-
-            break;
-        }
-    }
-    resize(200, 25 + _events.size() * 25);
+    addEvents();
+    updateEvents();
 }
 
 /**************************************
@@ -280,13 +336,17 @@ void Tracker::openOptions() {
     _langComboBox->show();
 
     _servComboBox->connect(_servComboBox, &QComboBox::currentTextChanged, [=](const QString& name) {
-        if (!name.isEmpty() && !name.startsWith("Select"))
+        if (!name.isEmpty() && !name.startsWith("Select")) {
             _worldId = _json["world_names"][name];
+            qDebug() << "world_id set to" << _worldId;
+        }
     });
 
     _langComboBox->connect(_langComboBox, &QComboBox::currentTextChanged, [=](const QString& lang) {
-        if (!lang.startsWith("Language"))
+        if (!lang.startsWith("Language")) {
             _language = lang.left(2).toLower();
+            qDebug() << "language set to" << _language;
+        }
         getJsonData();
     });
 
@@ -340,6 +400,14 @@ void Tracker::openOptions() {
 }
 
 void Tracker::updateEvents() {
+    if (QTime::currentTime().hour() >= 2 &&
+        QDate::currentDate() > _settings.value("Tracker/update_date").toDate()) {
+        qDebug() << "MUST FORCE UPDATE TODAY";
+        _settings.setValue("Tracker/update_date", QDate::currentDate());
+        startTrackingEvents();
+    } else
+        qDebug() << "don't have to force update today";
+
     _manager->get(QNetworkRequest(QUrl(_baseUrl + "/v1/events.json?world_id=" + _worldId)));
 
     /**
@@ -351,24 +419,28 @@ void Tracker::updateEvents() {
      * (such as an NPC dialogue) have not completed yet. After the activites have been completed,
      * the event will become Active.
      */
-    int i = 1;
+    int x = 1;
     int index = 0;
-    for (auto& list : _wishlist) {
+    for (const auto& list : _wishlist) {
         int size = list.size();
-        int j = 1;
-        for (const QString& id : list) {
-            //if (!_events[id]->isVisible())
-            //    continue;
+        int y = 1;
 
+        if (!list.tracked) {
+            qDebug() << "SKIPPING UPDATE FOR" << list;
+            continue;
+        }
+
+        for (const QString& id : list) {
             if (!_eventStates.contains(id)) {
                 qDebug() << "update :: can't find key" << id;
                 continue;
             }
+
             if (_eventStates[id]->state == "Success" && size-- > 1) {
-                qDebug() << i << "/" << j++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
+                qDebug() << x << "/" << y++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
                 continue;
             } else {
-                qDebug() << i << "/" << j++ << _eventStates[id]->state << _json["event_names"][id];
+                qDebug() << x << "/" << y++ << _eventStates[id]->state << _json["event_names"][id];
             }
 
             QPalette palette;
@@ -376,11 +448,10 @@ void Tracker::updateEvents() {
 
             _events[index]->setText(_json["event_names"][id]);
             _events[index]->setPalette(palette);
-            _events[index]->setAutoFillBackground(true);
 
             break;
         }
-        i++;
+        x++;
         ++index;
     }
 }

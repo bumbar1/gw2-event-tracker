@@ -9,20 +9,19 @@
 #include "event.hpp"
 #include "label.hpp"
 
-class QMainWindow;
 class QRect;
 class QNetworkReply;
 class QNetworkAccessManager;
 class QToolBar;
-class QSettings;
 class QComboBox;
 class QTimer;
 class QFont;
+class QStringList;
 
 class Tracker : public QMainWindow {
     Q_OBJECT
 public:
-    explicit Tracker(QMainWindow* parent=0);
+    explicit Tracker(QMainWindow* parent=nullptr);
     ~Tracker();
 
     void getJsonData();
@@ -31,6 +30,8 @@ public:
     void saveSettings();
     void loadSettings();
     void addEvents();
+    void reloadEvents();
+    void startTrackingEvents();
 
 public slots:
     void replyFinished(QNetworkReply* reply);
@@ -48,17 +49,17 @@ private:
     // [id] = state, map_id
     QMap<QString, EventState*>            _eventStates;
     QList<ClickableLabel*>                _events;
-    QList<QList<QString>>                 _wishlist;
+    QList<EventChain>                     _wishlist;
 
     QString                _baseUrl = "https://api.guildwars2.com";
-    QString                _worldId;
-    QString                _language; // en, de, fr, es
+    QString                _worldId = "2003";
+    QString                _language = "en"; // en, de, fr, es
     QString                _settingsPath;
     QSettings              _settings;
     int                    _updateInterval = 30; // in seconds
     int                    _requestCounter;
-    QComboBox*             _servComboBox;
-    QComboBox*             _langComboBox;
+    QComboBox*             _servComboBox = nullptr;
+    QComboBox*             _langComboBox = nullptr;
     QTimer*                _timer;
     QFont                  _font;
     QMap<QString, QString> _eventColors;
