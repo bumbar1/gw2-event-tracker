@@ -135,7 +135,7 @@ void Tracker::saveSettings() {
         _settings.setValue("position", pos());
         _settings.setValue("update_interval", _updateInterval);
         _settings.setValue("font", _font.toString());
-        _settings.setValue("update_date", QDate::currentDate());
+        _settings.setValue("update_date", QDate::currentDate().toString("yyyy-MM-dd"));
     _settings.endGroup();
 
     _settings.beginGroup("Colors");
@@ -166,7 +166,8 @@ void Tracker::loadSettings() {
         _font.fromString(_settings.value("font").toString());
         setFont(_font);
 
-        qDebug() << "last update date" << _settings.value("update_date").toDate();
+        qDebug() << "last update date"
+                 << QDate::fromString(_settings.value("update_date").toString(), "yyyy-MM-dd");
 
     _settings.endGroup();
 

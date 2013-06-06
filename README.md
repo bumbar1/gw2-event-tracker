@@ -10,6 +10,7 @@ Todo list
 - track entire zones?
 - customizable wishlist
 - Mac build
+- [icon](http://stackoverflow.com/questions/1460361/qt-creator-how-to-set-application-icon)
 
 Dependicies
 ---------------------
