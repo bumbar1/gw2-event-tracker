@@ -167,7 +167,7 @@ void Tracker::loadSettings() {
         setFont(_font);
 
         qDebug() << "last update date"
-                 << QDate::fromString(_settings.value("update_date").toString(), "yyyy-MM-dd");
+                 << _settings.value("update_date").toDate().toString("yyyy-MM-dd");
 
     _settings.endGroup();
 
@@ -199,9 +199,6 @@ void Tracker::loadSettings() {
 void Tracker::addEvents() {
     int index = 0;
     for (const auto& list : _wishlist) {
-        //if (!list.tracked)
-        //    continue;
-
         int size = list.size();
         for (const QString& eid : list) {
 
@@ -215,7 +212,7 @@ void Tracker::addEvents() {
                 label = new ClickableLabel("No info for " + eid, this);
             }
 
-            // when resotring state (reopening app) check if chain is tracked
+            // when restoring state (reopening app) check if chain is tracked
             if (!list.tracked)
                 label->setStyleSheet("background-color: #000000");
 
@@ -226,6 +223,7 @@ void Tracker::addEvents() {
             label->show();
             label->connect(label, &ClickableLabel::rightClicked, [=]() {
                 label->setStyleSheet("background-color: #000000");
+                //label->hide();
                 _wishlist[index].tracked = false;
 
                 qDebug() << "stopped tracking chain" << index;
@@ -404,7 +402,7 @@ void Tracker::updateEvents() {
     if (QTime::currentTime().hour() >= 2 &&
         QDate::currentDate() > _settings.value("Tracker/update_date").toDate()) {
         qDebug() << "MUST FORCE UPDATE TODAY";
-        _settings.setValue("Tracker/update_date", QDate::currentDate());
+        _settings.setValue("Tracker/update_date", QDate::currentDate().toString("yyyy-MM-dd"));
         startTrackingEvents();
     } else
         qDebug() << "don't have to force update today";
@@ -427,7 +425,8 @@ void Tracker::updateEvents() {
         int y = 1;
 
         if (!list.tracked) {
-            qDebug() << "SKIPPING UPDATE FOR" << list;
+            //qDebug() << "SKIPPING UPDATE FOR" << list;
+            ++index;
             continue;
         }
 
@@ -438,7 +437,7 @@ void Tracker::updateEvents() {
             }
 
             if (_eventStates[id]->state == "Success" && size-- > 1) {
-                qDebug() << x << "/" << y++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
+                //qDebug() << x << "/" << y++ << _eventStates[id]->state << "SKIPPING" <<_json["event_names"][id];
                 continue;
             } else {
                 qDebug() << x << "/" << y++ << _eventStates[id]->state << _json["event_names"][id];
