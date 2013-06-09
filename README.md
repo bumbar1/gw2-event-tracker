@@ -8,9 +8,9 @@ Usage
 Todo list
 ---------------------
 - track entire zones?
-- customizable wishlist
+- customizable wishlist (tabs)
 - Mac build
-- [icon](http://stackoverflow.com/questions/1460361/qt-creator-how-to-set-application-icon)
+- installer
 
 Dependicies
 ---------------------
@@ -31,8 +31,9 @@ App creates ini file in DOCUMENTS/Guild Wars 2 (folder should be created by GW2 
 	- libwinpthread-1.dll
 	- libstdc++-6.dll
 	- libgcc_s_sjlj-1.dll
-	- platforms/qminimal.dll
-	- platforms/qwindows.dll
+	- platforms
+		- qminimal.dll
+		- qwindows.dll
 
 Bugs
 ---------------------
