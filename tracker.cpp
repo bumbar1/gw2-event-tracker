@@ -47,7 +47,7 @@ Tracker::Tracker(QMainWindow* parent)
         new QAction("Quit", _toolbar),
         new QAction("Options", _toolbar),
         new QAction("Update", _toolbar),
-        new QAction("Show all", _toolbar),
+        new QAction("Show", _toolbar),
     };
 
     connect(actions[1], SIGNAL(triggered()), this, SLOT(openOptions()));
@@ -64,6 +64,11 @@ Tracker::Tracker(QMainWindow* parent)
     });
 
     _toolbar->addActions(actions);
+
+    //setStyleSheet("background:transparent;");
+    setAttribute(Qt::WA_TranslucentBackground);
+    //_toolbar->setAttribute(Qt::WA_TranslucentBackground, false);
+    _toolbar->setStyleSheet("background-color: #FFFFFF");
 
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
@@ -222,8 +227,9 @@ void Tracker::addEvents() {
             label->setAutoFillBackground(true);
             label->show();
             label->connect(label, &ClickableLabel::rightClicked, [=]() {
-                label->setStyleSheet("background-color: #000000");
-                //label->hide();
+                //label->setStyleSheet("background-color: #000000");
+                label->setStyleSheet("background:transparent;");
+                label->hide();
                 _wishlist[index].tracked = false;
 
                 qDebug() << "stopped tracking chain" << index;
@@ -282,6 +288,9 @@ void Tracker::reloadEvents() {
 }
 
 void Tracker::startTrackingEvents() {
+    for (auto& label : _events)
+        label->show();
+
     for (auto& list : _wishlist)
         list.tracked = true;
 
