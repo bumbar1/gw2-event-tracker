@@ -218,14 +218,18 @@ void Tracker::addEvents() {
             }
 
             // when restoring state (reopening app) check if chain is tracked
-            if (!list.tracked)
-                label->setStyleSheet("background-color: #000000");
+            if (!list.tracked) {
+                //label->setStyleSheet("background-color: #000000");
+                label->setStyleSheet("background:transparent;");
+                label->hide();
+            } else {
+                label->show();
+            }
 
             label->move(0, 25 + _events.size() * 25);
             label->setIndent(5);
             label->resize(200, 25);
             label->setAutoFillBackground(true);
-            label->show();
             label->connect(label, &ClickableLabel::rightClicked, [=]() {
                 //label->setStyleSheet("background-color: #000000");
                 label->setStyleSheet("background:transparent;");
