@@ -219,9 +219,8 @@ void Tracker::addEvents() {
 
             // when restoring state (reopening app) check if chain is tracked
             if (!list.tracked) {
-                //label->setStyleSheet("background-color: #000000");
                 label->setStyleSheet("background:transparent;");
-                label->hide();
+                //label->hide();
             } else {
                 label->show();
             }
@@ -231,7 +230,6 @@ void Tracker::addEvents() {
             label->resize(200, 25);
             label->setAutoFillBackground(true);
             label->connect(label, &ClickableLabel::rightClicked, [=]() {
-                //label->setStyleSheet("background-color: #000000");
                 label->setStyleSheet("background:transparent;");
                 label->hide();
                 _wishlist[index].tracked = false;
